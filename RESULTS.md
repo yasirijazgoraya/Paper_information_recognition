@@ -70,6 +70,8 @@ All three drop sharply when scoring requires the question and its answer to be l
 
 Default downstream pipeline: **PaddleOCR** for bulk OCR caching, with **Qwen2-VL** as a fallback on documents where Paddle's confidence is low or addresses are detected as multi-line.
 
+See [METRICS.md](METRICS.md) for the formal definitions of every metric used in this document.
+
 ## Reproducibility
 
 - Raw per-document outputs: `results/extractions/{DATASET}/{backend}/*.json`

@@ -73,20 +73,22 @@ $$
 
 ## 3. CORD numeric normalization (Fix A) and field recall
 
-CORD prices use periods as thousands separators (Indonesian convention). Without normalization, `25.000` is read as 25.0 instead of 25 000. Define:
+CORD prices use periods as thousands separators (Indonesian convention). Without normalization, `25.000` is read as 25.0 instead of 25 000.
+
+Let $\rho$ be the regular expression `^\d{1,3}(\.\d{3})+$` (one to three digits, then one or more groups of `.` followed by three digits). Define:
 
 $$
-\text{norm}_{\text{CORD}}(t) \;=\;
+\nu(t) \;=\;
 \begin{cases}
-\text{strip\_periods}(t) & \text{if } t \text{ matches } \texttt{^\textbackslash d\{1,3\}(\textbackslash.\textbackslash d\{3\})+\$} \\
+\text{strip\_periods}(t) & \text{if } t \text{ matches } \rho \\
 t & \text{otherwise.}
 \end{cases}
 $$
 
-For each ground-truth field instance $g \in G_d^{(f)}$ in category $f \in \{\text{menu\_items},\,\text{menu\_prices},\,\text{totals}\}$:
+For each ground-truth field instance $g \in G_d^{(f)}$ in category $f \in \{\text{menu items},\,\text{menu prices},\,\text{totals}\}$:
 
 $$
-\text{FieldRecall}_f \;=\; \frac{1}{N}\sum_{d=1}^{N}\;\frac{\big|\{\,g \in G_d^{(f)} \;:\; \text{norm}_{\text{CORD}}(g) \in \text{norm}_{\text{CORD}}(P_d)\,\}\big|}{|G_d^{(f)}|}.
+\text{FieldRecall}_f \;=\; \frac{1}{N}\sum_{d=1}^{N}\;\frac{\big|\{\,g \in G_d^{(f)} \;:\; \nu(g) \in \nu(P_d)\,\}\big|}{|G_d^{(f)}|}.
 $$
 
 **What it captures:** of all the items / prices / totals on a real receipt, what fraction did the OCR find? Numeric strings are compared after Fix A so format differences do not count as misses.

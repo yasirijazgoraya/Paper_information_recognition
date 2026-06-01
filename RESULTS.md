@@ -1,106 +1,79 @@
-# Results & Evaluation
+# Layer 1 — OCR Backend Evaluation
 
-Tracking sheet for all experiments. Tables are filled in as runs complete. Each row should link to a config / log / checkpoint under `logs/` or `results/`.
+Comparison of three OCR backends — **Tesseract 5**, **PaddleOCR**, **Qwen2-VL** — on three document-understanding benchmarks: FUNSD (forms), SROIE (receipts, ICDAR 2019), and CORD (receipts, Indonesian).
 
-Legend:
-- **TBD** — not yet run
-- **—** — not applicable for this dataset/model
-- All metrics are reported on the official test split unless noted.
+Metrics use the v3 scoring methodology:
+- CORD numeric matching handles the Indonesian thousands separator (`25.000` → 25 000).
+- SROIE address matching uses 70 % token-set overlap to tolerate multi-line layouts.
+- FUNSD adds a strict question→answer pair recall on top of lenient token recall.
 
----
+## Headline numbers
 
-## 1. OCR backend comparison (FUNSD)
+| Dataset | Backend       | Docs | Token F1  | Field / Key Recall | Latency (s/page) |
+|---------|---------------|-----:|----------:|-------------------:|-----------------:|
+| FUNSD   | Tesseract     |   50 |     0.630 |              0.643 |             0.33 |
+| FUNSD   | PaddleOCR     |   50 |     0.686 |              0.610 |             1.58 |
+| FUNSD   | **Qwen2-VL**  |   50 | **0.854** |          **0.799** |             7.32 |
+| SROIE   | Tesseract     |  347 |     0.268 |              0.719 |             0.56 |
+| SROIE   | PaddleOCR     |  347 |     0.229 |              0.666 |             1.21 |
+| SROIE   | **Qwen2-VL**  |  347 | **0.349** |          **0.958** |             8.46 |
+| CORD    | Tesseract     |  100 |     0.379 |              0.281 |             0.63 |
+| CORD    | **PaddleOCR** |  100 | **0.820** |          **0.657** |             0.48 |
+| CORD    | Qwen2-VL      |  100 |     0.766 |              0.564 |             3.69 |
 
-Comparison of OCR engines on the FUNSD test set. Metrics: character error rate (CER), word error rate (WER), mean detection IoU vs. ground-truth boxes, and average inference time per page on the local GPU.
+## Per-dataset detail
 
-| Backend       | Version | CER ↓ | WER ↓ | Det. IoU ↑ | Time/page (s) ↓ | Script                                       |
-|---------------|---------|-------|-------|------------|-----------------|----------------------------------------------|
-| Tesseract     | 5.x     | TBD   | TBD   | TBD        | TBD             | `code/layer1_vision/day1_tesseract_funsd.py` |
-| PaddleOCR     | TBD     | TBD   | TBD   | TBD        | TBD             | `code/layer1_vision/day2_paddleocr_funsd.py` |
-| Qwen-VL (OCR) | TBD     | TBD   | TBD   | TBD        | TBD             | `code/layer1_vision/day3_qwen_funsd.py`      |
+### SROIE — field hit rates
 
-**Notes:**
-- TBD — observations after backend selection (errors on small fonts, handwriting, rotation, etc.).
-- Chosen backend for downstream tasks: **TBD**.
+| Backend   |   Company |      Date |   Address |     Total |
+|-----------|----------:|----------:|----------:|----------:|
+| Tesseract |     0.585 |     0.718 |     0.793 |     0.781 |
+| PaddleOCR |     0.510 |     0.914 |     0.265 |     0.977 |
+| Qwen2-VL  | **0.928** | **0.960** | **0.968** | **0.977** |
 
----
+Qwen2-VL is the only backend above 0.9 on every field. PaddleOCR's address recall collapses (0.265) because it splits multi-line addresses across separate detections.
 
-## 2. Per-dataset results
+### CORD — field recall
 
-### 2.1 CORD — Receipt key-information extraction
+| Backend   | Menu items | Menu prices |    Totals |
+|-----------|-----------:|------------:|----------:|
+| Tesseract |      0.452 |       0.325 |     0.155 |
+| PaddleOCR |  **0.862** |   **0.952** | **0.450** |
+| Qwen2-VL  |      0.778 |       0.766 |     0.382 |
 
-Entity-level F1 on the CORD test split (1000 receipts, 30 entity types).
+PaddleOCR is the clear winner on CORD — both the fastest backend (0.48 s/page) and the most accurate on prices and totals. Tesseract fails on small-font price columns; Qwen2-VL is competitive but several points behind on every field.
 
-| Model       | OCR        | Precision | Recall | F1 ↑ | Notes |
-|-------------|------------|-----------|--------|------|-------|
-| LayoutLMv3  | TBD        | TBD       | TBD    | TBD  |       |
-| Donut       | end-to-end | TBD       | TBD    | TBD  |       |
-| (baseline)  | TBD        | TBD       | TBD    | TBD  |       |
+### FUNSD — lenient vs. strict
 
-### 2.2 FUNSD — Form understanding
+| Backend   | Answer-token recall | Q → A pair recall |
+|-----------|--------------------:|------------------:|
+| Tesseract |               0.643 |             0.168 |
+| PaddleOCR |               0.610 |             0.222 |
+| Qwen2-VL  |           **0.799** |         **0.336** |
 
-Entity-level F1 and relation extraction F1 on the FUNSD test split (50 forms).
+All three drop sharply when scoring requires the question and its answer to be linked, not just both present. Qwen2-VL is the strongest, but even it pairs only one third of questions correctly — confirming that an extra layout / relation step is needed downstream.
 
-| Model       | OCR        | Entity F1 ↑ | Relation F1 ↑ | Notes |
-|-------------|------------|-------------|----------------|-------|
-| LayoutLMv3  | TBD        | TBD         | TBD            |       |
-| Donut       | end-to-end | TBD         | —              |       |
-| (baseline)  | TBD        | TBD         | TBD            |       |
+## Takeaways
 
-### 2.3 SROIE — Scanned receipt OCR & KIE
+- **Qwen2-VL is the most accurate overall** — best on FUNSD and SROIE by a wide margin, second on CORD. The cost is latency: 7–8 s/page on the local GPU, roughly **5–15× slower** than Tesseract or PaddleOCR.
+- **PaddleOCR is the best speed/quality trade-off for receipts.** On CORD it beats Qwen2-VL outright; on SROIE it ties on totals and dates. Its weak spot is multi-line addresses.
+- **Tesseract is competitive only on Latin-script forms** (FUNSD). It collapses on small fonts and dense numeric tables (CORD totals: 15 %).
+- **Strict structural scoring matters.** Token-level F1 looks healthy across the board, but FUNSD Q→A pair recall and CORD totals recall expose how much information is still missed — motivating layout-aware extraction (LayoutLMv3 / Donut) as the next step.
 
-Field-level F1 on the four target fields (company, date, address, total).
+## Operational recommendation
 
-| Model       | OCR        | Company | Date | Address | Total | Macro F1 ↑ |
-|-------------|------------|---------|------|---------|-------|------------|
-| LayoutLMv3  | TBD        | TBD     | TBD  | TBD     | TBD   | TBD        |
-| Donut       | end-to-end | TBD     | TBD  | TBD     | TBD   | TBD        |
-| (baseline)  | TBD        | TBD     | TBD  | TBD     | TBD   | TBD        |
+| Use case                          | Backend     | Reason                                  |
+|-----------------------------------|-------------|-----------------------------------------|
+| High-throughput receipts          | PaddleOCR   | Best CORD quality, fastest of the three |
+| High-accuracy receipts / forms    | Qwen2-VL    | Best SROIE & FUNSD, multi-line robust   |
+| Low-resource / CPU-only fallback  | Tesseract   | Cheapest, acceptable on clean forms     |
 
-### 2.4 RVL-CDIP — Document image classification
+Default downstream pipeline: **PaddleOCR** for bulk OCR caching, with **Qwen2-VL** as a fallback on documents where Paddle's confidence is low or addresses are detected as multi-line.
 
-Top-1 accuracy on the official test split (40k images, 16 classes).
+## Reproducibility
 
-| Model       | Pretrain        | Top-1 Acc ↑ | Macro F1 ↑ | Notes |
-|-------------|-----------------|-------------|------------|-------|
-| ViT-Base    | ImageNet-21k    | TBD         | TBD        |       |
-| DiT-Base    | IIT-CDIP        | TBD         | TBD        |       |
-| (baseline)  | TBD             | TBD         | TBD        |       |
-
----
-
-## 3. Cross-dataset summary
-
-Headline numbers for the report. Update once §1–§2 are filled in.
-
-| Dataset  | Task                 | Best model | Metric     | Score |
-|----------|----------------------|------------|------------|-------|
-| CORD     | KIE                  | TBD        | Entity F1  | TBD   |
-| FUNSD    | Form understanding   | TBD        | Entity F1  | TBD   |
-| SROIE    | Receipt KIE          | TBD        | Macro F1   | TBD   |
-| RVL-CDIP | Doc classification   | TBD        | Top-1 Acc  | TBD   |
-
----
-
-## 4. Ablations & error analysis
-
-To populate after baselines are done. Suggested studies:
-
-- **OCR sensitivity** — re-run KIE models with each OCR backend; report Δ F1.
-- **Layout vs. text-only** — strip layout features from LayoutLMv3; quantify the gap.
-- **Data scaling** — train on 25 / 50 / 100 % of training data; plot learning curves.
-- **Error buckets** — confusion matrices for RVL-CDIP; common failure modes for FUNSD relations.
-
----
-
-## 5. Reproducibility
-
-For each filled-in row above, record:
-
-- Commit hash of the code used.
-- Config file path (`code/configs/...`).
-- Log directory (`logs/<run_name>/`).
-- Checkpoint location (`results/checkpoints/<run_name>/`).
-- Hardware (GPU model, CUDA version).
-
-This makes every number in the tables traceable to an exact run.
+- Raw per-document outputs: `results/extractions/{DATASET}/{backend}/*.json`
+- Per-run metrics: `results/metrics/{dataset}_{backend}_v3.csv`
+- Failure lists: `results/metrics/{dataset}_{backend}_failures.csv`
+- Aggregate tables: `results/metrics/full_comparison_v3.{csv,md}`
+- Scripts: `code/layer1_vision/day{1,2,3}_*.py`, `score_v3.py`

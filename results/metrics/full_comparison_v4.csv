@@ -1,0 +1,10 @@
+dataset,model,documents,token_f1,answer_recall,qa_pair_recall,qa_pair_recall_ci,latency_sec,field_precision,field_recall,field_f1,field_f1_ci,hit_company,hit_date,hit_address,hit_total,menu_items_recall,menu_prices_recall,totals_recall
+FUNSD,tesseract,50,0.63,0.643,0.168,"[0.121, 0.223]",0.33,,,,,,,,,,,
+FUNSD,paddleocr,50,0.686,0.61,0.222,"[0.166, 0.278]",1.58,,,,,,,,,,,
+FUNSD,qwen2vl,50,0.854,0.799,0.336,"[0.267, 0.402]",7.32,,,,,,,,,,,
+SROIE,tesseract,347,0.268,,,,0.56,0.518,0.719,0.596,"[0.571, 0.618]",0.585,0.718,0.793,0.781,,,
+SROIE,paddleocr,347,0.229,,,,1.21,0.51,0.666,0.576,"[0.559, 0.593]",0.51,0.914,0.265,0.977,,,
+SROIE,qwen2vl,347,0.349,,,,8.46,0.717,0.958,0.817,"[0.807, 0.827]",0.928,0.96,0.968,0.977,,,
+CORD,tesseract,100,0.379,,,,0.63,0.213,0.281,0.228,"[0.188, 0.265]",,,,,0.452,0.325,0.155
+CORD,paddleocr,100,0.82,,,,0.48,0.34,0.657,0.445,"[0.428, 0.463]",,,,,0.862,0.952,0.45
+CORD,qwen2vl,100,0.766,,,,3.69,0.38,0.564,0.438,"[0.399, 0.472]",,,,,0.778,0.766,0.382

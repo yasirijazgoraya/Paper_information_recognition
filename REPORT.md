@@ -140,3 +140,4 @@ date, total matched; address missed (fuzzy overlap < 0.70) => F1 0.750.
 1. Run score_v4.py over all extractions; regenerate full_comparison_v4.{csv,md}.
 2. Update RESULTS.md to lead with the v4 field-F1 table.
 3. RQ1 Step 2: add Textract, Claude Vision, GPT-4o; re-score same harness.
+FUNSD zero-shot added: kv_f1 0.496 (P 0.488 / R 0.517)
